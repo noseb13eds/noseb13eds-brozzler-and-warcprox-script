@@ -1,3 +1,6 @@
-*.pem
-warcs
+.rethinkdb-pid
 .venv
+rethinkdb_data
+warcprox
+warcprox.sqlite
+warcs
