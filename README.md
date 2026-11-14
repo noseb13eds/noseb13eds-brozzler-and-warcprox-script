@@ -1,5 +1,6 @@
 # noseb13eds' brozzler and warcprox script
-## 'nbaws' for short
+
+### 'nbaws' for short
 
 bash script for archiving websites as .warc files using brozzler, warcprox, and yt-dlp.
 
@@ -11,7 +12,9 @@ bash script for archiving websites as .warc files using brozzler, warcprox, and 
 
 [chromium](https://www.chromium.org/getting-involved/download-chromium/)
 
-yt-dlp also has certain dependencies not included with the pip install that can be found [here](https://github.com/yt-dlp/yt-dlp#dependencies) (mainly [ffmpeg/ffprobe](https://www.ffmpeg.org/download.html), [curl_cffi](https://www.ffmpeg.org/download.html), and [deno](https://deno.com/)).
+## yt-dlp dependencies
+
+`yt-dlp` has dependencies not included with the pip install found [here](https://github.com/yt-dlp/yt-dlp#dependencies) (mainly [ffmpeg/ffprobe](https://www.ffmpeg.org/download.html), [curl_cffi](https://www.ffmpeg.org/download.html), and [deno](https://deno.com/)).
 
 ## setup
 
@@ -32,6 +35,11 @@ deactivate
 
 ## usage
 
-`./nbaws jobs/example-job.yaml`
+```
+source .venv/bin/activate
+./nbaws jobs/example-job.yaml
+```
 
-jobs can be configured with a .yaml file. an example job file is included in the `jobs` directory, and a guide for configuring job files can be found [here](https://github.com/internetarchive/brozzler/blob/master/job-conf.rst).
+jobs can be configured with a .yaml file.
+
+an example job file is included in the `jobs` directory, and a guide for configuring job files can be found [here](https://github.com/internetarchive/brozzler/blob/master/job-conf.rst).
