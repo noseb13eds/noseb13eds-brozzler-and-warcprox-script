@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# where to save .warc files
+warcsDirectory="warcs"
+
+# where to save warcprox certificate files
+warcproxDirectory="warcprox"
+
+# amount of time to wait for open .warc file to rollover
+warcRolloverIdleTime=60
+
+# pid variables
+warcproxPid=""
+brozzlerWorkerPid=""
+
+# subroutine to shut down background processes
+killBackgroundProcessesAndExit() {
+
+  # kill brozzler-worker first (killing it after rethinkdb/warcprox causes it to hang)
+  if [ -n "$brozzlerWorkerPid" ]; then
+    echo "killing brozzler-worker (PID: $brozzlerWorkerPid)..."
+    kill "$brozzlerWorkerPid"
+    wait "$brozzlerWorkerPid"
+    brozzlerWorkerPid=""
+  fi
+
+  # kill warcprox
+  if [ -n "$warcproxPid" ]; then
+    echo "killing warcprox (PID: $warcproxPid)..."
+    kill "$warcproxPid"
+    wait "$warcproxPid"
+    warcproxPid=""
+  fi
+
+  # kill rethinkdb
+  rethinkdbPid="$(cat .rethinkdb-pid 2>/dev/null)"
+  if [ -n "$rethinkdbPid" ]; then
+    echo "killing rethinkdb (PID: $rethinkdbPid)..."
+    kill "$rethinkdbPid"
+    wait "$rethinkdbPid"
+    rethinkdbPid=""
+  fi
+
+  # exit
+  exit 0
+
+}
+
+# trap SIGINT and EXIT signals
+trap killBackgroundProcessesAndExit SIGINT EXIT
+
+# check if job file arg was provided and exists as a file
+argumentError=true
+if [ -z "$1" ]; then
+  echo "error:   a job file must be provided."
+elif [ ! -f "$1" ]; then
+  echo "error:   \"$1\" does not exist."
+else
+  argumentError=false
+fi
+
+# log usage/example if job file arg was incorrect
+if [ "$argumentError" = true ]; then
+  echo "usage:   ./nbaws [JOB_FILE]"
+  echo "example: ./nbaws \"jobs/example-job.yaml\""
+  exit 1
+fi
+
+# check if "id: " line was defined in job file (search with grep, trim whitespace with sed)
+jobId="$(grep -E "^id: +.+" "$1"| sed -E "s/^id: +//" | sed -E "s/ +$//")"
+if [ -z "$jobId" ]; then
+  echo "error:   a job id must be defined in \"$1\"."
+  echo "example: \"id: example-job\""
+  exit 1
+fi
+
+# export chrome args for brozzler to use
+export BROZZLER_EXTRA_CHROME_ARGS="--ignore-certificate-errors"
+
+echo "starting background processes..."
+
+# start rethinkdb (pid stored in .rethinkdb-pid file) and sleep 5 seconds
+rethinkdb --pid-file .rethinkdb-pid &
+sleep 5
+
+warcproxStartedTimestamp="$(date "+%s")"
+
+# start warcprox, record pid, and sleep 5 seconds
+warcprox \
+  --subdir-prefix \
+  --rollover-idle-time "$warcRolloverIdleTime" \
+  --prefix "$jobId" \
+  --dir "$warcsDirectory" \
+  --certs-dir "$warcproxDirectory/site-certs" \
+  --cacert "$warcproxDirectory/ca-cert.pem" \
+  --warc-filename "{prefix}-{timestamp14}" &
+warcproxPid="$!"
+sleep 5
+
+# start brozzler-worker, record pid, and sleep 5 seconds
+brozzler-worker --proxy localhost:8000 &
+brozzlerWorkerPid="$!"
+sleep 5
+
+echo "queueing brozzler job with id \"$jobId\""
+
+# queue new brozzler job
+brozzler-new-job "$1"
+
+echo "waiting for job to end..."
+
+sleep 15
+
+# wait for queued job to end, checking every 15 seconds
+while [ -n "$(brozzler-list-jobs --yaml --job "$jobId" | grep -E "^status: ACTIVE$")" ];
+do
+  sleep 15
+done
+
+echo "job ended, waiting for .warc file to rollover..."
+
+# wait for open .warc file to rollover, checking every 15 seconds
+while [ -n "$(find "$warcsDirectory" -type f -name "$jobId*.warc.open" -newermt "@$warcproxStartedTimestamp")" ];
+do
+  sleep 15
+done
+
+echo ".warc file closed, waiting 15 seconds before exiting..."
+
+sleep 15
+
+# kill background processes and exit
+killBackgroundProcessesAndExit
+

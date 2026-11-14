@@ -1,0 +1,10 @@
+id: example-job
+time_limit: 60
+ignore_robots: false
+warcprox_meta: null
+metadata: {}
+seeds:
+  - url: https://example.com/
+
+# a guide on configuring brozzler jobs can be found here:
+# https://github.com/internetarchive/brozzler/blob/master/job-conf.rst
