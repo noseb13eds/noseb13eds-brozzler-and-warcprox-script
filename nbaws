@@ -83,6 +83,10 @@ echo "starting background processes..."
 rethinkdb --pid-file .rethinkdb-pid &
 sleep 5
 
+# make warcs directory
+mkdir -p "$warcsDirectory"
+
+# get timestamp of when warcprox started
 warcproxStartedTimestamp="$(date "+%s")"
 
 # start warcprox, record pid, and sleep 5 seconds
