@@ -1,6 +1,9 @@
 .rethinkdb-pid
 .venv
+jobs/*
 rethinkdb_data
 warcprox
 warcprox.sqlite
 warcs
+
+!jobs/example-job.yaml
