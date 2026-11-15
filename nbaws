@@ -74,6 +74,30 @@ if [ -z "$jobId" ]; then
   exit 1
 fi
 
+# check if seperate instances of background processes are currently running
+backgroundProcessAlreadyRunning=false
+if [ -z "$(pgrep rethinkdb)" ]; then
+  echo "error: another rethinkdb instance is currently running."
+  backgroundProcessAlreadyRunning=true
+fi
+if [ -z "$(pgrep warcprox)" ]; then
+  echo "error: another warcprox instance is currently running."
+  backgroundProcessAlreadyRunning=true
+fi
+if [ -z "$(pgrep brozzler-worker)" ]; then
+  echo "error: another brozzler-worker instance is currently running."
+  backgroundProcessAlreadyRunning=true
+fi
+
+# if any background processes are currently running, log explanation and abort
+# (this can be changed to be more flexible in the future)
+if [ "$backgroundProcessAlreadyRunning" = true ];
+  echo "active instances of background processes were found."
+  echo "check that nbaws isn't already running,"
+  echo "and that rethinkdb, warcprox, brozzler-worker have been cleaned up properly."
+  exit 1
+fi
+
 # export chrome args for brozzler to use
 export BROZZLER_EXTRA_CHROME_ARGS="--ignore-certificate-errors"
 
