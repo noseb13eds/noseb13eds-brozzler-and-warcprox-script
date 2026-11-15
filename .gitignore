@@ -1,3 +1,4 @@
+*.pem
 .rethinkdb-pid
 .venv
 jobs/*
